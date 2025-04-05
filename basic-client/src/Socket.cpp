@@ -9,16 +9,24 @@
 
 #include "../includes/Socket.hpp"
 
-void Socket::initializeSocket()
+void Socket::initializeSocket(
+    const int domain,
+    const int type,
+    const int protocol
+)
 {
-    m_fileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+    m_fileDescriptor = socket(domain, type, protocol);
     if (m_fileDescriptor == -1)
     {
         throw std::runtime_error("socket() failed");
     }
 }
 
-Socket::Socket(int domain, int type, int protocol) { initializeSocket(); };
+Socket::Socket(int domain, int type, int protocol) { initializeSocket(
+    domain,
+    type,
+    protocol
+); };
 
 Socket::~Socket()
 {

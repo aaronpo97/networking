@@ -1,6 +1,5 @@
 #include "../includes/AddressInfo.hpp"
 #include <stdexcept>
-#include <cstring>
 
 AddressInfo::AddressInfo(const addrinfo &hints, const std::string &url,
                          const std::string &port)

@@ -6,11 +6,16 @@
 class Socket
 {
     int m_fileDescriptor{};
+
     /**
      * @brief Initializes the socket using the socket() system call.
      * @throws std::runtime_error if socket() fails.
      */
-    void initializeSocket();
+    void initializeSocket(
+        int domain,
+        int type,
+        int protocol
+    );
 
 public:
     /**
@@ -43,6 +48,4 @@ public:
      * @note This is used to perform operations on the socket.
      */
     [[nodiscard]] int getFileDescriptor() const;
-
-
 };
