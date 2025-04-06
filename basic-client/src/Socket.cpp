@@ -9,31 +9,23 @@
 
 #include "../includes/Socket.hpp"
 
-void Socket::initializeSocket(
-    const int domain,
-    const int type,
-    const int protocol
-)
-{
-    m_fileDescriptor = socket(domain, type, protocol);
-    if (m_fileDescriptor == -1)
-    {
-        throw std::runtime_error("socket() failed");
-    }
+void Socket::initializeSocket(const int domain, const int type, const int protocol) {
+  m_fileDescriptor = socket(domain, type, protocol);
+  if (m_fileDescriptor == -1) {
+    throw std::runtime_error("socket() failed");
+  }
 }
 
-Socket::Socket(int domain, int type, int protocol) { initializeSocket(
-    domain,
-    type,
-    protocol
-); };
-
-Socket::~Socket()
-{
-    if (m_fileDescriptor != -1)
-    {
-        close(m_fileDescriptor);
-    }
+Socket::Socket(int domain, int type, int protocol) {
+  initializeSocket(domain, type, protocol);
 };
 
-int Socket::getFileDescriptor() const { return m_fileDescriptor; }
+Socket::~Socket() {
+  if (m_fileDescriptor != -1) {
+    close(m_fileDescriptor);
+  }
+};
+
+int Socket::getFileDescriptor() const {
+  return m_fileDescriptor;
+}
