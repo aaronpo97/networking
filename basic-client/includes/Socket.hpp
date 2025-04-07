@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @brief  This class is an RAII wrapper for a BSD Socket. Manages the socket automatically.
+ * This class is an RAII wrapper for a BSD Socket. Manages the socket automatically.
  */
 class Socket {
   int m_fileDescriptor{};

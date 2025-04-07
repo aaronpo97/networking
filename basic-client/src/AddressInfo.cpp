@@ -1,8 +1,9 @@
-#include "../includes/AddressInfo.hpp"
 #include <stdexcept>
 
+#include "../includes/AddressInfo.hpp"
+
 AddressInfo::AddressInfo(const addrinfo &hints, const std::string &url, const std::string &port) {
-  int status = getaddrinfo(url.c_str(), port.c_str(), &hints, &m_result);
+  const int status = getaddrinfo(url.c_str(), port.c_str(), &hints, &m_result);
 
   if (status != 0) {
     throw std::runtime_error("getaddrinfo() failed: " + std::string(gai_strerror(status)));
