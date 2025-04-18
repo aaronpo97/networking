@@ -41,7 +41,7 @@ void *get_in_addr(sockaddr *sa) {
 
 
 // main
-void handleRequest(int clientSocketFileDescriptor) {
+void handleRequest(const int clientSocketFileDescriptor) {
   const std::string message      = "{\"message\": \"Hello, world!\"}";
   const std::string httpResponse = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: application/json\r\n"
@@ -54,7 +54,7 @@ void handleRequest(int clientSocketFileDescriptor) {
 
   // recv(): Read incoming data from the client
   char buffer[1024]{};
-  int  bytesReceived = recv(clientSocketFileDescriptor, buffer, sizeof(buffer) - 1, 0);
+  const ssize_t bytesReceived = recv(clientSocketFileDescriptor, buffer, sizeof(buffer) - 1, 0);
   if (bytesReceived != -1) {
     buffer[bytesReceived] = '\0'; // Null-terminate the received data
     std::cout << "Received request:\n" << buffer;
@@ -206,6 +206,8 @@ int main() {
       close(clientSocketFileDescriptor);
       exit(0);
     }
+
+
     close(clientSocketFileDescriptor); // parent doesn't need this
   }
 
