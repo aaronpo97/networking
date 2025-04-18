@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 4.0.1)
 
 # Project name and version
 project(HTTPServer VERSION 1.0 LANGUAGES CXX)
@@ -18,7 +18,7 @@ include(FetchContent)
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.11.2
+        GIT_TAG v3.12.0
 )
 FetchContent_MakeAvailable(json)
 

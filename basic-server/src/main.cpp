@@ -1,17 +1,17 @@
+#include <algorithm>
 #include <arpa/inet.h>
+#include <csignal>
+#include <cstdio>
 #include <errno.h>
 #include <iostream>
 #include <memory>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <csignal>
-#include <cstdio>
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <algorithm>
 #include <vector>
 
 #define PORT "3490" // the port users will be connecting to
@@ -24,7 +24,8 @@ void sigchld_handler(int s) {
   // waitpid() might overwrite errno, so we save and restore it:
   int saved_errno = errno;
 
-  while (waitpid(-1, nullptr, WNOHANG) > 0);
+  while (waitpid(-1, nullptr, WNOHANG) > 0)
+    ;
 
   errno = saved_errno;
 }
@@ -37,8 +38,6 @@ void *get_in_addr(sockaddr *sa) {
 
   return &(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr);
 }
-
-
 
 // main
 void handleRequest(const int clientSocketFileDescriptor) {
@@ -53,26 +52,27 @@ void handleRequest(const int clientSocketFileDescriptor) {
                                    message;
 
   // recv(): Read incoming data from the client
-  char buffer[1024]{};
+  char          buffer[1024]{};
   const ssize_t bytesReceived = recv(clientSocketFileDescriptor, buffer, sizeof(buffer) - 1, 0);
   if (bytesReceived != -1) {
     buffer[bytesReceived] = '\0'; // Null-terminate the received data
     std::cout << "Received request:\n" << buffer;
 
     // Extract HTTP method (e.g., GET, POST) from the request
-    const std::string requestLine(buffer);
-    const std::string method = requestLine.substr(0, requestLine.find(' '));
-    const std::string path   = requestLine.substr(requestLine.find(' ') + 1,
-                                                requestLine.find(' ', requestLine.find(' ') + 1) -
-                                                requestLine.find(' ') - 1);
+    const std::string &requestLine(buffer);
+    const std::string &method = requestLine.substr(0, requestLine.find(' '));
+    const std::string &path   = requestLine.substr(requestLine.find(' ') + 1,
+                                                   requestLine.find(' ', requestLine.find(' ') + 1) -
+                                                       requestLine.find(' ') - 1);
 
-    std::cout << "HTTP Path: " << path << std::endl;
-    std::cout << "HTTP Method: " << method << std::endl;
+    std::cout << "HTTP Path: " << path << "\n";
+    std::cout << "HTTP Method: " << method << "\n";
   } else {
     perror("recv");
   }
 
-  ssize_t sendRet = send(clientSocketFileDescriptor, httpResponse.c_str(), httpResponse.size(), 0);
+  const ssize_t sendRet =
+      send(clientSocketFileDescriptor, httpResponse.c_str(), httpResponse.size(), 0);
 
   if (sendRet == -1) {
     perror("send");
@@ -206,7 +206,6 @@ int main() {
       close(clientSocketFileDescriptor);
       exit(0);
     }
-
 
     close(clientSocketFileDescriptor); // parent doesn't need this
   }
