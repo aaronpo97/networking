@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0.1)
+cmake_minimum_required(VERSION 3.30.5)
 
 # Project name and version
 project(HTTPServer VERSION 1.0 LANGUAGES CXX)
