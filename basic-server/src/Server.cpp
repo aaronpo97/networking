@@ -118,15 +118,16 @@ void Server::handleSigChld(int) {
    * It is set as the handler for SIGCHLD using sigaction().
    */
   const int saved_errno = errno;
-  while (waitpid(-1, nullptr, WNOHANG) > 0);
+  while (waitpid(-1, nullptr, WNOHANG) > 0)
+    ;
   errno = saved_errno;
 }
 
 // get sockaddr, IPv4 or IPv6:
 void *Server::getInAddr(sockaddr *sa) {
   return (sa->sa_family == AF_INET)
-           ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
-           : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
+             ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
+             : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
 }
 
 void Server::configureSigAction() {
@@ -154,21 +155,19 @@ void Server::handleRequest(const int clientFD) {
   json usersJson = json::array();
   for (const auto &user : users) {
     if (user) {
-      usersJson.push_back({
-          {"id", user->getId()},
-          {"first_name", user->getFirstName()},
-          {"last_name", user->getLastName()},
-          {"email", user->getEmail()}
-      });
+      usersJson.push_back({{"id", user->getId()},
+                           {"first_name", user->getFirstName()},
+                           {"last_name", user->getLastName()},
+                           {"email", user->getEmail()}});
     }
   }
 
   const std::string responseBody = usersJson.dump();
   const std::string httpResponse = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: application/json\r\n"
-                                   "Content-Length: " + std::to_string(responseBody.size()) +
-                                   "\r\nConnection: close\r\n\r\n" +
-                                   responseBody;
+                                   "Content-Length: " +
+                                   std::to_string(responseBody.size()) +
+                                   "\r\nConnection: close\r\n\r\n" + responseBody;
 
   // recv(): Read incoming data from the client
   char          buffer[1024]{};
@@ -182,7 +181,7 @@ void Server::handleRequest(const int clientFD) {
     const std::string method = requestLine.substr(0, requestLine.find(' '));
     const std::string path   = requestLine.substr(requestLine.find(' ') + 1,
                                                   requestLine.find(' ', requestLine.find(' ') + 1) -
-                                                  requestLine.find(' ') - 1);
+                                                      requestLine.find(' ') - 1);
 
     std::cout << "HTTP Path: " << path << "\n";
     std::cout << "HTTP Method: " << method << "\n";
