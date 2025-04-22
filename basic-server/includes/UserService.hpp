@@ -2,7 +2,7 @@
 #include "./UserRepository.hpp"
 
 class UserService {
-  std::shared_ptr<UserRepository> m_repository;
+  std::unique_ptr<UserRepository> m_repository;
 
 public:
   explicit UserService(const UserRepository &repository);
@@ -19,5 +19,6 @@ public:
               const std::string &first_name,
               const std::string &last_name,
               const std::string &email) const;
+
   void remove(size_t id) const;
 };

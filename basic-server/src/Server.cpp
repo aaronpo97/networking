@@ -2,7 +2,15 @@
 #include "../includes/Server.hpp"
 #include <arpa/inet.h>
 #include <sys/wait.h>
-
+#include <netdb.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <iostream>
+#include <vector>
+#include <memory>
+#include <string>
+#include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 void Server::run() {
