@@ -1,23 +1,24 @@
 // Server.cpp
 #include "../includes/Server.hpp"
+#include "Server.hpp"
 #include <arpa/inet.h>
-#include <sys/wait.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include <iostream>
-#include <vector>
 #include <memory>
-#include <string>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <nlohmann/json.hpp>
+#include <string>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
 using json = nlohmann::json;
 
 void Server::run() {
   int listenFD = setupSocket();
   configureSigAction();
 
-  std::cout << "Server: waiting for connections...\n";
+  std::cout << "Server: waiting for connections on port " << PORT << "...\n";
 
   sockaddr_storage clientAddr{};
   socklen_t        sin_size;
@@ -54,14 +55,15 @@ int Server::setupSocket() {
   hints.ai_flags    = AI_PASSIVE; // use my IP
 
   const int yes = 1;
-  const int rv  = getaddrinfo(nullptr, PORT, &hints, &servinfo);
+  const int rv  = getaddrinfo(nullptr, PORT.c_str(), &hints, &servinfo);
   if (rv != 0) {
     std::cerr << "getaddrinfo: " << gai_strerror(rv) << "\n";
     exit(1);
-  }
+  } // end if
 
   int       sockFD = 0;
   addrinfo *p;
+
   for (p = servinfo; p != nullptr; p = p->ai_next) {
     /**
      * 1. Ask the operating system for a socket.
@@ -69,8 +71,9 @@ int Server::setupSocket() {
      * This uses the socket() system call (UNIX) to create a socket.
      */
     sockFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-    if (sockFD == -1)
+    if (sockFD == -1) {
       continue;
+    }
 
     /**
      * 2. Set socket options.
@@ -152,6 +155,29 @@ void Server::configureSigAction() {
   }
 }
 
+std::string Server::parseRequest(const int clientFD) {
+  std::string request;
+  while (true) {
+    char    buffer[1024];
+    ssize_t bytes = recv(clientFD, buffer, sizeof(buffer) - 1, 0);
+    if (bytes <= 0) {
+      break;
+    }
+
+    buffer[bytes] = '\0'; // null terminate the buffer
+    request.append(buffer);
+
+    // Check for end of headers
+    size_t headersEnd = request.find("\r\n\r\n");
+    if (headersEnd != std::string::npos) {
+      break; // @todo keep reading until the end of the body using the Content-Length
+    }
+  }
+
+  std::cout << "Request: " << request << "\n";
+  return request;
+}
+
 void Server::handleRequest(const int clientFD) {
   /**
    * Handle an incoming HTTP request from a client.
@@ -177,23 +203,7 @@ void Server::handleRequest(const int clientFD) {
                                    std::to_string(responseBody.size()) +
                                    "\r\nConnection: close\r\n\r\n" + responseBody;
 
-  // recv(): Read incoming data from the client
-  char          buffer[1024]{};
-  const ssize_t received = recv(clientFD, buffer, sizeof(buffer) - 1, 0);
-  if (received != -1) {
-    buffer[received] = '\0'; // Null-terminate the received data
-    std::cout << "Received request:\n" << buffer;
-
-    // Extract HTTP method and path from the request
-    std::string       requestLine(buffer);
-    const std::string method = requestLine.substr(0, requestLine.find(' '));
-    const std::string path   = requestLine.substr(requestLine.find(' ') + 1,
-                                                  requestLine.find(' ', requestLine.find(' ') + 1) -
-                                                      requestLine.find(' ') - 1);
-
-    std::cout << "HTTP Path: " << path << "\n";
-    std::cout << "HTTP Method: " << method << "\n";
-  }
+  const std::string &requestString = parseRequest(clientFD);
 
   // send(): Send the JSON HTTP response back to the client
   if (send(clientFD, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
