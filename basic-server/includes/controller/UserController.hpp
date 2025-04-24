@@ -1,6 +1,5 @@
 #pragma once
-#include "./UserService.hpp"
-#include <iostream>
+#include "../service/UserService.hpp"
 #include <memory>
 #include <nlohmann/json.hpp>
 
@@ -9,10 +8,10 @@ class UserController {
   std::unique_ptr<UserService> m_userService;
 
 public:
-  UserController(std::unique_ptr<UserService> service);
+  explicit UserController(std::unique_ptr<UserService> &&service);
 
   /* /users */
-  void get();
+  std::string get() const;
 
   /* /users/{id} */
   void getById(size_t id);

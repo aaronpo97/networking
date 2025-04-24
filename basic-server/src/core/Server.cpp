@@ -1,6 +1,7 @@
-// Server.cpp
-#include "../includes/Server.hpp"
-#include "Server.hpp"
+#include "../includes/core/Server.hpp"
+#include "../includes/service/UserService.hpp"
+#include "controller/UserController.hpp"
+
 #include <arpa/inet.h>
 #include <iostream>
 #include <memory>
@@ -12,6 +13,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
+
 using json = nlohmann::json;
 
 void Server::run() {
@@ -129,16 +131,15 @@ void Server::handleSigChld(int) {
    * It is set as the handler for SIGCHLD using sigaction().
    */
   const int saved_errno = errno;
-  while (waitpid(-1, nullptr, WNOHANG) > 0)
-    ;
+  while (waitpid(-1, nullptr, WNOHANG) > 0);
   errno = saved_errno;
 }
 
 // get sockaddr, IPv4 or IPv6:
 void *Server::getInAddr(sockaddr *sa) {
   return (sa->sa_family == AF_INET)
-             ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
-             : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
+           ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
+           : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
 }
 
 void Server::configureSigAction() {
@@ -178,35 +179,23 @@ std::string Server::parseRequest(const int clientFD) {
   return request;
 }
 
-void Server::handleRequest(const int clientFD) {
+void Server::handleRequest(const int clientSocketFileDescriptor) {
   /**
    * Handle an incoming HTTP request from a client.
    * This function generates a JSON response containing all users from the service.
    */
-  UserService                        service = UserService(UserRepository());
-  std::vector<std::shared_ptr<User>> users   = service.getAll();
 
-  json usersJson = json::array();
-  for (const auto &user : users) {
-    if (user) {
-      usersJson.push_back({{"id", user->getId()},
-                           {"first_name", user->getFirstName()},
-                           {"last_name", user->getLastName()},
-                           {"email", user->getEmail()}});
-    }
-  }
+  // temporary for now
+  auto userRepo       = std::make_unique<UserRepository>();
+  auto userService    = std::make_unique<UserService>(std::move(userRepo));
+  auto userController = std::make_unique<UserController>(std::move(userService));
+  // @todo: These pointers will go out of scope and call delete at end of fn, move elsewhere
 
-  const std::string responseBody = usersJson.dump();
-  const std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-                                   "Content-Type: application/json\r\n"
-                                   "Content-Length: " +
-                                   std::to_string(responseBody.size()) +
-                                   "\r\nConnection: close\r\n\r\n" + responseBody;
+  const std::string &requestString = parseRequest(clientSocketFileDescriptor);
 
-  const std::string &requestString = parseRequest(clientFD);
-
+  const std::string &httpResponse = userController->get();
   // send(): Send the JSON HTTP response back to the client
-  if (send(clientFD, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+  if (send(clientSocketFileDescriptor, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
     perror("send");
   }
 }

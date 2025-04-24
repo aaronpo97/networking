@@ -1,17 +1,7 @@
 #pragma once
 
-#include <UserRepository.hpp>
-#include <UserService.hpp>
-#include <csignal>
-#include <iostream>
-#include <memory>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <sys/socket.h>
-#include <unistd.h>
-#include <vector>
 
 #define BACKLOG 10
 
@@ -28,5 +18,5 @@ private:
   static int   setupSocket();
 
   static inline void configureSigAction();
-  static std::string parseRequest(const int clientFD);
+  static std::string parseRequest(int clientFD);
 };

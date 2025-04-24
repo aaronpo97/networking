@@ -1,18 +1,20 @@
-#include "../includes/UserController.hpp"
+#include "../includes/controller/UserController.hpp"
+#include <iostream>
 
-UserController::UserController(std::unique_ptr<UserService> service) :
-    m_userService(std::move(service)) {}
+UserController::UserController(std::unique_ptr<UserService> &&service) :
+  m_userService(std::move(service)) {
+}
 
-void UserController::get() {
+std::string UserController::get() const {
   const auto &users = m_userService->getAll();
   json        jsonResponse;
   json        userJson;
 
   for (const auto &user : users) {
-    userJson["id"]         = user->getId();
-    userJson["first_name"] = user->getFirstName();
-    userJson["last_name"]  = user->getLastName();
-    userJson["email"]      = user->getEmail();
+    userJson["id"]         = user.getId();
+    userJson["first_name"] = user.getFirstName();
+    userJson["last_name"]  = user.getLastName();
+    userJson["email"]      = user.getEmail();
     jsonResponse.push_back(userJson);
   }
 
@@ -21,6 +23,8 @@ void UserController::get() {
                                "Content-Type: application/json\r\n"
                                "Content-Length: " +
                                std::to_string(json.size()) + "\r\n\r\n" + json;
+
+  return response;
 }
 
 void UserController::getById(size_t id) {
