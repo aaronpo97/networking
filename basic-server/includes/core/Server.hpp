@@ -1,5 +1,6 @@
 #pragma once
 
+#include <httpparser/request.h>
 #include <string>
 #include <sys/socket.h>
 
@@ -17,6 +18,6 @@ private:
   static void  handleRequest(int clientSocketFileDescriptor);
   static int   setupSocket();
 
-  static inline void configureSigAction();
-  static std::string parseRequest(int clientFD);
+  static inline void         configureSigAction();
+  static httpparser::Request parseRequest(int clientFD);
 };

@@ -2,8 +2,7 @@
 #include <iostream>
 
 UserController::UserController(std::unique_ptr<UserService> &&service) :
-  m_userService(std::move(service)) {
-}
+    m_userService(std::move(service)) {}
 
 std::string UserController::get() const {
   const auto &users = m_userService->getAll();

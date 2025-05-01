@@ -1,6 +1,6 @@
 #include "../includes/core/Server.hpp"
+#include "../includes/controller/UserController.hpp"
 #include "../includes/service/UserService.hpp"
-#include "controller/UserController.hpp"
 
 #include <arpa/inet.h>
 #include <iostream>
@@ -14,6 +14,10 @@
 #include <unistd.h>
 #include <vector>
 
+#include <httpparser/httprequestparser.h>
+#include <httpparser/request.h>
+
+using namespace httpparser;
 using json = nlohmann::json;
 
 void Server::run() {
@@ -138,8 +142,8 @@ void Server::handleSigChld(int) {
 // get sockaddr, IPv4 or IPv6:
 void *Server::getInAddr(sockaddr *sa) {
   return (sa->sa_family == AF_INET)
-           ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
-           : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
+             ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
+             : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
 }
 
 void Server::configureSigAction() {
@@ -156,30 +160,38 @@ void Server::configureSigAction() {
   }
 }
 
-std::string Server::parseRequest(const int clientFD) {
-  std::string request;
+Request Server::parseRequest(const int clientFD) {
+  Request           request;
+  HttpRequestParser parser;
+
+  std::string requestString;
   while (true) {
-    char    buffer[1024];
-    ssize_t bytes = recv(clientFD, buffer, sizeof(buffer) - 1, 0);
+    char          buffer[1024];
+    const ssize_t bytes = recv(clientFD, buffer, sizeof(buffer) - 1, 0);
     if (bytes <= 0) {
       break;
     }
 
     buffer[bytes] = '\0'; // null terminate the buffer
-    request.append(buffer);
+    requestString.append(buffer);
 
     // Check for end of headers
-    size_t headersEnd = request.find("\r\n\r\n");
+    size_t headersEnd = requestString.find("\r\n\r\n");
     if (headersEnd != std::string::npos) {
       break; // @todo keep reading until the end of the body using the Content-Length
     }
   }
 
-  std::cout << "Request: " << request << "\n";
+  const char *begin = requestString.data();
+  const char *end   = requestString.data() + requestString.size();
+
+  parser.parse(request, begin, end);
   return request;
 }
 
 void Server::handleRequest(const int clientSocketFileDescriptor) {
+  std::setvbuf(stdout, nullptr, _IONBF, 0); // Disable buffering for stdout
+
   /**
    * Handle an incoming HTTP request from a client.
    * This function generates a JSON response containing all users from the service.
@@ -191,7 +203,13 @@ void Server::handleRequest(const int clientSocketFileDescriptor) {
   auto userController = std::make_unique<UserController>(std::move(userService));
   // @todo: These pointers will go out of scope and call delete at end of fn, move elsewhere
 
-  const std::string &requestString = parseRequest(clientSocketFileDescriptor);
+  //  Parse the HTTP request
+  const Request &request = parseRequest(clientSocketFileDescriptor);
+
+  for (auto character : request.content) {
+    std::cout << character;
+  }
+  // std::cout << request.inspect() << "\n";
 
   const std::string &httpResponse = userController->get();
   // send(): Send the JSON HTTP response back to the client

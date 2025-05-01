@@ -41,9 +41,7 @@ void UserRepository::update(const size_t       id,
 }
 
 void UserRepository::remove(const size_t id) {
-  std::erase_if(m_users, [id](const User &user) {
-    return user.getId() == id;
-  });
+  std::erase_if(m_users, [id](const User &user) { return user.getId() == id; });
 }
 
 void UserRepository::clear() {
