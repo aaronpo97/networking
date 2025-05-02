@@ -1,23 +1,37 @@
 #pragma once
 
+#include "../controller/UserController.hpp"
+#include "../repository/UserRepository.hpp"
+#include "../service/UserService.hpp"
+
+#include <httpparser/httprequestparser.h>
+#include <httpparser/httpresponseparser.h>
 #include <httpparser/request.h>
-#include <string>
+#include <httpparser/response.h>
+
+#include <iostream>
+#include <memory>
 #include <sys/socket.h>
+#include "./Router.hpp"
 
 #define BACKLOG 10
 
+using namespace httpparser;
+
 class Server {
-public:
-  void run();
 
-  static constexpr std::string PORT = "3490";
-
-private:
+  Router       m_router;
   static void  handleSigChld(int s);
   static void *getInAddr(sockaddr *sa);
-  static void  handleRequest(int clientSocketFileDescriptor);
+  void         handleRequest(int clientSocketFileDescriptor);
   static int   setupSocket();
 
   static inline void         configureSigAction();
-  static httpparser::Request parseRequest(int clientFD);
+  static Request parseRequest(int clientFD);
+
+public:
+  Server() = default;
+  void run();
+
+  static constexpr std::string PORT = "4210";
 };

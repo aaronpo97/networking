@@ -135,7 +135,8 @@ void Server::handleSigChld(int) {
    * It is set as the handler for SIGCHLD using sigaction().
    */
   const int saved_errno = errno;
-  while (waitpid(-1, nullptr, WNOHANG) > 0);
+  while (waitpid(-1, nullptr, WNOHANG) > 0)
+    ;
   errno = saved_errno;
 }
 
@@ -197,23 +198,7 @@ void Server::handleRequest(const int clientSocketFileDescriptor) {
    * This function generates a JSON response containing all users from the service.
    */
 
-  // temporary for now
-  auto userRepo       = std::make_unique<UserRepository>();
-  auto userService    = std::make_unique<UserService>(std::move(userRepo));
-  auto userController = std::make_unique<UserController>(std::move(userService));
-  // @todo: These pointers will go out of scope and call delete at end of fn, move elsewhere
-
   //  Parse the HTTP request
   const Request &request = parseRequest(clientSocketFileDescriptor);
-
-  for (auto character : request.content) {
-    std::cout << character;
-  }
-  // std::cout << request.inspect() << "\n";
-
-  const std::string &httpResponse = userController->get();
-  // send(): Send the JSON HTTP response back to the client
-  if (send(clientSocketFileDescriptor, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-    perror("send");
-  }
+  m_router.route(clientSocketFileDescriptor, request);
 }

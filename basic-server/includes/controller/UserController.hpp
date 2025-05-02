@@ -11,8 +11,8 @@ public:
   explicit UserController(std::unique_ptr<UserService> &&service);
 
   /* /users */
-  std::string get() const;
+  void get(int fileDescriptor) const;
 
   /* /users/{id} */
-  void getById(size_t id);
+  void getById(int fileDescriptor, size_t id) const;
 };
