@@ -20,9 +20,9 @@
 using namespace httpparser;
 using json = nlohmann::json;
 
-void Server::run() {
-  int listenFD = setupSocket();
-  configureSigAction();
+void Server::run() const {
+  const int listenFD = setupSocket();
+  configureSignalHandling();
 
   std::cout << "Server: waiting for connections on port " << PORT << "...\n";
 
@@ -31,21 +31,22 @@ void Server::run() {
 
   while (true) {
     // main accept() loop
-    sin_size     = sizeof clientAddr;
-    int clientFD = accept(listenFD, reinterpret_cast<sockaddr *>(&clientAddr), &sin_size);
+    sin_size           = sizeof clientAddr;
+    const int clientFD = accept(listenFD, reinterpret_cast<sockaddr *>(&clientAddr), &sin_size);
     if (clientFD == -1) {
       perror("accept");
       continue;
     }
 
     char s[INET6_ADDRSTRLEN];
-    inet_ntop(clientAddr.ss_family, getInAddr(reinterpret_cast<sockaddr *>(&clientAddr)), s,
+    inet_ntop(clientAddr.ss_family, getClientIPAddress(reinterpret_cast<sockaddr *>(&clientAddr)),
+              s,
               sizeof s);
 
     if (fork() == 0) {
       // this is the child process
       close(listenFD); // child doesn't need the listener
-      handleRequest(clientFD);
+      processClientRequest(clientFD);
       close(clientFD);
       exit(0);
     }
@@ -128,31 +129,39 @@ int Server::setupSocket() {
   return sockFD;
 }
 
-void Server::handleSigChld(int) {
+void Server::handleSigChild(int) {
+
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *Server::getClientIPAddress(sockaddr *socketAddress) {
+  return (socketAddress->sa_family == AF_INET)
+           ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(socketAddress)->sin_addr))
+           : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(socketAddress)->
+             sin6_addr));
+}
+
+
+void handleSignalChild(int) {
+  const int saved_errno = errno;
+  while (waitpid(-1, nullptr, WNOHANG) > 0) {
+  }
+  errno = saved_errno;
+}
+
+void Server::configureSignalHandling() {
+  /**
+   * This sets up the signal handler for SIGCHLD to clean up terminated child processes.
+   */
+  struct sigaction sa{};
+
   /**
    * This function reaps all dead child processes to prevent zombie processes.
    *
    * It is set as the handler for SIGCHLD using sigaction().
    */
-  const int saved_errno = errno;
-  while (waitpid(-1, nullptr, WNOHANG) > 0)
-    ;
-  errno = saved_errno;
-}
+  sa.sa_handler = handleSignalChild;
 
-// get sockaddr, IPv4 or IPv6:
-void *Server::getInAddr(sockaddr *sa) {
-  return (sa->sa_family == AF_INET)
-             ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(sa)->sin_addr))
-             : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(sa)->sin6_addr));
-}
-
-void Server::configureSigAction() {
-  /**
-   * This sets up the signal handler for SIGCHLD to clean up terminated child processes.
-   */
-  struct sigaction sa{};
-  sa.sa_handler = handleSigChld;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_RESTART;
   if (sigaction(SIGCHLD, &sa, nullptr) == -1) {
@@ -161,14 +170,11 @@ void Server::configureSigAction() {
   }
 }
 
-Request Server::parseRequest(const int clientFD) {
-  Request           request;
-  HttpRequestParser parser;
-
+std::string Server::receiveHttpRequest(const int clientSocket) {
   std::string requestString;
   while (true) {
     char          buffer[1024];
-    const ssize_t bytes = recv(clientFD, buffer, sizeof(buffer) - 1, 0);
+    const ssize_t bytes = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
     if (bytes <= 0) {
       break;
     }
@@ -182,23 +188,36 @@ Request Server::parseRequest(const int clientFD) {
       break; // @todo keep reading until the end of the body using the Content-Length
     }
   }
+  return requestString;
+}
 
-  const char *begin = requestString.data();
-  const char *end   = requestString.data() + requestString.size();
+
+Request Server::parseHttpRequest(const std::string &rawRequest) {
+  Request           request;
+  HttpRequestParser parser;
+
+  const char *begin = rawRequest.data();
+  const char *end   = rawRequest.data() + rawRequest.size();
 
   parser.parse(request, begin, end);
   return request;
 }
 
-void Server::handleRequest(const int clientSocketFileDescriptor) {
+void Server::processClientRequest(const int clientSocket) const {
   std::setvbuf(stdout, nullptr, _IONBF, 0); // Disable buffering for stdout
 
-  /**
+  /*
    * Handle an incoming HTTP request from a client.
    * This function generates a JSON response containing all users from the service.
    */
 
+  // this gets the raw HTTP string using rec
+  const std::string &requestString = receiveHttpRequest(clientSocket);
   //  Parse the HTTP request
-  const Request &request = parseRequest(clientSocketFileDescriptor);
-  m_router.route(clientSocketFileDescriptor, request);
+  const Request &request = parseHttpRequest(requestString);
+
+  /*
+   * Use the router object to send a response to the client based on the appropriate route.
+   */
+  m_router.route(clientSocket, request);
 }

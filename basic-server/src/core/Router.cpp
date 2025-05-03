@@ -40,6 +40,7 @@ void Router::route(const int clientFD, const Request &request) const {
   response.content      = std::vector<char>(content.begin(), content.end());
   response.headers.push_back({"Content-Type", "application/json"});
   response.headers.push_back({"Content-Length", std::to_string(content.size())});
+
   const std::string &raw = response.serialize();
   // Send the response to the client
   const ssize_t bytesSent = send(clientFD, raw.c_str(), raw.size(), 0);
