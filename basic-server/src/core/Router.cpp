@@ -10,41 +10,81 @@ using namespace httpparser;
 
 Router::Router() :
     m_userController(std::make_unique<UserController>(
-        std::make_unique<UserService>(std::make_unique<UserRepository>()))) {}
+        std::make_unique<UserService>(std::make_unique<UserRepository>()))) {
 
-void Router::route(const int clientFD, const Request &request) const {
-  const std::string &method = request.method;
-  const std::string &uri    = request.uri;
+  m_routes[{"GET", "/users"}] = [this](const int fd, const Request &req) {
+    m_userController->get(fd);
+  };
 
-  // route /users
-  if (request.method == "GET" && uri == "/users") {
-    m_userController->get(clientFD);
-    return;
-  }
-  // route /users/{id}
-  if (request.method == "GET" && uri.find("/users/") == 0) {
-    const std::string id = uri.substr(7);
-    m_userController->getById(clientFD, std::stoul(id));
-    return;
-  }
+  m_routes[{"GET", "/teapot"}] = [this](const int fd, const Request &req) {
+    nlohmann::json jsonResponse;
+    jsonResponse["error"]   = "I'm a teapot";
+    jsonResponse["message"] = "The server is in fact a teapot.";
+    jsonResponse["status"]  = 418;
 
-  nlohmann::json responseJSON;
-  responseJSON["error"]     = "Sorry we couldn't find what you were looking for.";
-  const std::string content = responseJSON.dump(4);
+    // Serialize the JSON response
+    const std::string &jsonString = jsonResponse.dump();
+    // create a response object
+    Response response;
+    response.statusCode   = 418;
+    response.status       = "I'm a teapot";
+    response.keepAlive    = false;
+    response.versionMajor = 1;
+    response.versionMinor = 1;
+    response.content      = std::vector(jsonString.begin(), jsonString.end());
+    response.headers.push_back({"Content-Type", "application/json"});
+    response.headers.push_back({"Content-Length", std::to_string(jsonString.size())});
+    const std::string &raw = response.serialize();
 
-  // catch-all route
-  auto response         = Response();
+    std::cout << raw << "\n";
+    ssize_t bytesSent = send(fd, raw.c_str(), raw.size(), 0);
+    if (bytesSent == -1) {
+      std::cerr << "Error sending response: " << strerror(errno) << "\n";
+    }
+  };
+}
+
+void Router::sendNotFoundResponse(int clientFD) const {
+  nlohmann::json jsonResponse;
+  jsonResponse["error"]   = "Not Found";
+  jsonResponse["message"] = "The requested resource was not found on the server.";
+  jsonResponse["status"]  = 404;
+
+  // Serialize the JSON response
+  const std::string &jsonString = jsonResponse.dump();
+
+  // create a response object
+  Response response;
   response.statusCode   = 404;
+  response.status       = "Not Found";
+  response.keepAlive    = false;
   response.versionMajor = 1;
   response.versionMinor = 1;
-  response.content      = std::vector<char>(content.begin(), content.end());
+  response.content      = std::vector(jsonString.begin(), jsonString.end());
   response.headers.push_back({"Content-Type", "application/json"});
-  response.headers.push_back({"Content-Length", std::to_string(content.size())});
+  response.headers.push_back({"Content-Length", std::to_string(jsonString.size())});
 
   const std::string &raw = response.serialize();
-  // Send the response to the client
-  const ssize_t bytesSent = send(clientFD, raw.c_str(), raw.size(), 0);
+  std::cout << raw << "\n";
+
+  std::cout << "Sending 404 response to client: " << clientFD << "\n";
+  ssize_t bytesSent = send(clientFD, raw.c_str(), raw.size(), 0);
   if (bytesSent == -1) {
-    std::cerr << "Error sending response: " << strerror(errno) << std::endl;
+    std::cerr << "Error sending response: " << strerror(errno) << "\n";
+  }
+}
+
+void Router::route(const int clientFD, const Request &request) const {
+  auto routeIterator = m_routes.find({request.method, request.uri});
+  if (routeIterator != m_routes.end()) {
+    const auto &[routeKey, handler] = *routeIterator;
+
+    // Call the handler function with the client file descriptor and request
+    handler(clientFD, request);
+  } else {
+
+    std::cout << "No route found for " << request.method << " " << request.uri << "\n";
+    // If no route is found, send a 404 response
+    sendNotFoundResponse(clientFD);
   }
 }

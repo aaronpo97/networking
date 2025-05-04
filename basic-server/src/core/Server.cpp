@@ -98,6 +98,7 @@ int Server::setupSocket() {
      * This uses the bind() system call (UNIX) to bind the socket to the address and port.
      * The address is specified in the addrinfo structure returned by getaddrinfo().
      */
+
     if (bind(sockFD, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockFD);
       continue;
@@ -129,24 +130,12 @@ int Server::setupSocket() {
   return sockFD;
 }
 
-void Server::handleSigChild(int) {
-
-}
-
 // get sockaddr, IPv4 or IPv6:
 void *Server::getClientIPAddress(sockaddr *socketAddress) {
   return (socketAddress->sa_family == AF_INET)
            ? reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in *>(socketAddress)->sin_addr))
            : reinterpret_cast<void *>(&(reinterpret_cast<sockaddr_in6 *>(socketAddress)->
              sin6_addr));
-}
-
-
-void handleSignalChild(int) {
-  const int saved_errno = errno;
-  while (waitpid(-1, nullptr, WNOHANG) > 0) {
-  }
-  errno = saved_errno;
 }
 
 void Server::configureSignalHandling() {
@@ -157,10 +146,13 @@ void Server::configureSignalHandling() {
 
   /**
    * This function reaps all dead child processes to prevent zombie processes.
-   *
-   * It is set as the handler for SIGCHLD using sigaction().
    */
-  sa.sa_handler = handleSignalChild;
+  sa.sa_handler = [](int) {
+    const int saved_errno = errno;
+    while (waitpid(-1, nullptr, WNOHANG) > 0) {
+    }
+    errno = saved_errno;
+  };
 
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_RESTART;
@@ -183,7 +175,7 @@ std::string Server::receiveHttpRequest(const int clientSocket) {
     requestString.append(buffer);
 
     // Check for end of headers
-    size_t headersEnd = requestString.find("\r\n\r\n");
+    const size_t headersEnd = requestString.find("\r\n\r\n");
     if (headersEnd != std::string::npos) {
       break; // @todo keep reading until the end of the body using the Content-Length
     }
@@ -204,20 +196,10 @@ Request Server::parseHttpRequest(const std::string &rawRequest) {
 }
 
 void Server::processClientRequest(const int clientSocket) const {
-  std::setvbuf(stdout, nullptr, _IONBF, 0); // Disable buffering for stdout
-
-  /*
-   * Handle an incoming HTTP request from a client.
-   * This function generates a JSON response containing all users from the service.
-   */
-
-  // this gets the raw HTTP string using rec
+  // Get the raw HTTP request string
   const std::string &requestString = receiveHttpRequest(clientSocket);
-  //  Parse the HTTP request
+  // Parse the HTTP request
   const Request &request = parseHttpRequest(requestString);
-
-  /*
-   * Use the router object to send a response to the client based on the appropriate route.
-   */
+  // Use the router object to send a response to the client based on the appropriate route.
   m_router.route(clientSocket, request);
 }
