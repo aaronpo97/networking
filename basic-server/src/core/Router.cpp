@@ -1,5 +1,6 @@
 #include "../includes/core/Router.hpp"
 #include "../includes/controller/UserController.hpp"
+#include "../includes/core/ResponseBuilder.hpp"
 #include <httpparser/request.h>
 #include <httpparser/response.h>
 #include <iostream>
@@ -25,15 +26,17 @@ Router::Router() :
     // Serialize the JSON response
     const std::string &jsonString = jsonResponse.dump();
     // create a response object
-    Response response;
-    response.statusCode   = 418;
-    response.status       = "I'm a teapot";
-    response.keepAlive    = false;
-    response.versionMajor = 1;
-    response.versionMinor = 1;
-    response.content      = std::vector(jsonString.begin(), jsonString.end());
-    response.headers.push_back({"Content-Type", "application/json"});
-    response.headers.push_back({"Content-Length", std::to_string(jsonString.size())});
+    ResponseBuilder responseBuilder = ResponseBuilder();
+
+    const Response &response = responseBuilder.setStatusCode(418)
+                                   .setStatusText("I'm a teapot")
+                                   .setKeepAlive(false)
+                                   .setVersion(1, 1)
+                                   .setContent(jsonString)
+                                   .addHeader("Content-Type", "application/json")
+                                   .addHeader("Content-Length", std::to_string(jsonString.size()))
+                                   .build();
+
     const std::string &raw = response.serialize();
 
     std::cout << raw << "\n";
@@ -44,7 +47,7 @@ Router::Router() :
   };
 }
 
-void Router::sendNotFoundResponse(int clientFD) const {
+void Router::sendNotFoundResponse(const int clientFD) {
   nlohmann::json jsonResponse;
   jsonResponse["error"]   = "Not Found";
   jsonResponse["message"] = "The requested resource was not found on the server.";
@@ -53,16 +56,16 @@ void Router::sendNotFoundResponse(int clientFD) const {
   // Serialize the JSON response
   const std::string &jsonString = jsonResponse.dump();
 
-  // create a response object
-  Response response;
-  response.statusCode   = 404;
-  response.status       = "Not Found";
-  response.keepAlive    = false;
-  response.versionMajor = 1;
-  response.versionMinor = 1;
-  response.content      = std::vector(jsonString.begin(), jsonString.end());
-  response.headers.push_back({"Content-Type", "application/json"});
-  response.headers.push_back({"Content-Length", std::to_string(jsonString.size())});
+  // Create a response builder object and use it to build the response
+  ResponseBuilder responseBuilder = ResponseBuilder();
+  const Response &response        = responseBuilder.setStatusCode(404)
+                                 .setStatusText("Not Found")
+                                 .setKeepAlive(false)
+                                 .setVersion(1, 1)
+                                 .setContent(jsonString)
+                                 .addHeader("Content-Type", "application/json")
+                                 .addHeader("Content-Length", std::to_string(jsonString.size()))
+                                 .build();
 
   const std::string &raw = response.serialize();
   std::cout << raw << "\n";

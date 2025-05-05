@@ -31,7 +31,7 @@ class Router {
    *
    * @param clientFD The file descriptor of the client socket.
    */
-  void sendNotFoundResponse(int clientFD) const;
+  static void sendNotFoundResponse(int clientFD) ;
 
 public:
   Router();

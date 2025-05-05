@@ -13,20 +13,19 @@ using namespace httpparser;
 class Server {
   Router m_router;
 
-  static void  handleSigChild(int signal);
   static void  configureSignalHandling();
   static void *getClientIPAddress(sockaddr *socketAddress);
 
   static int setupSocket();
 
-/**
-  * Reads the complete HTTP request from the specified client socket.
-  *
-  * This method uses the recv system call to read data from the given socket
-  * until the full HTTP request is received.
-  *
-  * @param clientSocket The file descriptor for the client socket connection.
-  */
+  /**
+   * Reads the complete HTTP request from the specified client socket.
+   *
+   * This method uses the recv system call to read data from the given socket
+   * until the full HTTP request is received.
+   *
+   * @param clientSocket The file descriptor for the client socket connection.
+   */
   static std::string receiveHttpRequest(int clientSocket);
 
   /**
@@ -34,10 +33,9 @@ class Server {
    * @param rawRequest The raw HTTP request string from the client.
    * @return The request parsed into a struct.
    */
-  static Request     parseHttpRequest(const std::string &rawRequest);
+  static Request parseHttpRequest(const std::string &rawRequest);
 
-
-  void               processClientRequest(int clientSocket) const;
+  void processClientRequest(int clientSocket) const;
 
 public:
   Server() = default;

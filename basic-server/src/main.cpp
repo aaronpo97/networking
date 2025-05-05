@@ -1,7 +1,7 @@
 #include "../includes/core/Server.hpp"
 
 int main() {
-  Server server;
+  const auto server = Server();
   server.run();
   return 0;
 }
