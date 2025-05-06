@@ -1,7 +1,8 @@
 #pragma once
 #include "../repository/UserRepository.hpp"
+#include "./IService.hpp"
 
-class UserService {
+class UserService : public IService<User> {
   std::unique_ptr<UserRepository> m_repository;
 
 public:

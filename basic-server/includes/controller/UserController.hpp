@@ -1,10 +1,12 @@
 #pragma once
 #include "../service/UserService.hpp"
+#include "IController.hpp"
 #include <memory>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
-class UserController {
+
+class UserController : public IController<User> {
   std::unique_ptr<UserService> m_userService;
 
 public:
